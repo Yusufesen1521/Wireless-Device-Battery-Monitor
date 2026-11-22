@@ -1,12 +1,12 @@
 # BatteryHub
 
 > 🍎 **Now on macOS.** This fork adds a native **macOS menu-bar app**: the same 95 HID vendor drivers through IOKit,
-> plus Bluetooth battery levels for AirPods, Magic Keyboard / Mouse / Trackpad and headsets. **[Download for Mac](https://github.com/zainudinnoori/Wireless-Device-Battery-Monitor/releases/latest)** · [macOS details](#macos-experimental).
-> The macOS port is maintained by [@zainudinnoori](https://github.com/zainudinnoori). The original Windows app is by
-> [@krisgfx9](https://github.com/krisgfx9/Wireless-Device-Battery-Monitor); please support both.
+> plus Bluetooth battery levels for AirPods, Magic Keyboard / Mouse / Trackpad and headsets. **[Download for Mac](https://github.com/zainnoori/Wireless-Device-Battery-Monitor/releases/latest)** · [macOS details](#macos-experimental).
+> The macOS port is maintained by [@zainnoori](https://github.com/zainnoori). The original Windows app is by
+> @krisgfx9 ([krisgfx.com](https://krisgfx.com/tools/)); please support both.
 >
 > [![Support the macOS port on Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20the%20macOS%20port-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/zainnoori)
-> [![Star this fork](https://img.shields.io/github/stars/zainudinnoori/Wireless-Device-Battery-Monitor?style=flat&logo=github&label=Star%20the%20macOS%20fork)](https://github.com/zainudinnoori/Wireless-Device-Battery-Monitor)
+> [![Star this fork](https://img.shields.io/github/stars/zainnoori/Wireless-Device-Battery-Monitor?style=flat&logo=github&label=Star%20the%20macOS%20fork)](https://github.com/zainnoori/Wireless-Device-Battery-Monitor)
 >
 > <img src="docs/macos-screenshot.png" alt="BatteryHub in the macOS menu bar: headset 64%, mouse 12% (low), mouse 81% (asleep), keyboard 47% charging, controller 100% full" width="383">
 
@@ -16,11 +16,11 @@ Battery levels of your wireless mouse, headset, keyboard and controller, right o
 
 ![BatteryHub on the taskbar](docs/screenshot.png)
 
-> **Just want it working?** Download **[BatteryHub-Setup](https://github.com/krisgfx9/Wireless-Device-Battery-Monitor/releases/latest)** from the latest release. Use the per-user installation for setup without administrator rights; see the [installation notes](#install) for unsigned-app warnings and the all-users option.
+> **Just want it working?** Download **[BatteryHub-Setup](https://github.com/zainnoori/Wireless-Device-Battery-Monitor/releases/latest)** from the latest release. Use the per-user installation for setup without administrator rights; see the [installation notes](#install) for unsigned-app warnings and the all-users option.
 >
 > **Experienced users** can grab the portable zip, use the [command-line options](#command-line), or [build it from source](#build) with `make` or `build.bat`.
 >
-> **Like it?** BatteryHub is free and open source. If it saves you a trip into vendor software, you can support it on [Ko-fi](https://ko-fi.com/krisgfx), [PayPal](https://www.paypal.com/paypalme/krisgfx) or [GitHub Sponsors](https://github.com/sponsors/krisgfx9). It helps me keep my apps free alongside my studies. Not able to donate? A ⭐ star, sharing it, or reporting an unsupported device with a `--dump` helps just as much.
+> **Like it?** BatteryHub is free and open source. If it saves you a trip into vendor software, you can support it on [Ko-fi](https://ko-fi.com/krisgfx) or [PayPal](https://www.paypal.com/paypalme/krisgfx). It helps me keep my apps free alongside my studies. Not able to donate? A ⭐ star, sharing it, or reporting an unsupported device with a `--dump` helps just as much.
 
 - **Tiny**: a ~350 KB app using about 2 MB of RAM. It's plain C++/Win32, with no runtime and no background service, and supports per-user installation without administrator rights.
 - **Vendor apps usually aren't required**: most drivers query devices directly. Some headsets use the bundled [HeadsetControl](https://github.com/Sapd/HeadsetControl) helper. Device-specific setup, firmware patches and conflicts with vendor apps are described in the table and [Limitations](#limitations).
@@ -259,17 +259,17 @@ These reports cover the listed connection modes and behaviors; battery confirmat
 - Chimera V2 (receiver `3554:F512`; battery level and charging read)
 - Machenike L7 Arctic / L7 Mix (`248A:FF4C` receiver and `248A:FF4E` cable), including charging and cable/receiver duplicate suppression. Bluetooth and low-battery/full-charge boundaries were not hardware-tested.
 - MCHOSE V9 Pro 2 (`3837:6011` dongle); battery level read, charging and sleep untested.
-- EPOMAKER EA75 on its `05AC:024F` 2.4 GHz receiver, using the existing SONiX driver from [PR #60](https://github.com/krisgfx9/Wireless-Device-Battery-Monitor/pull/60). Battery percentage, receiver reconnection and power-on recovery were verified. Charging indication and wired battery reporting are not supported by this driver; Bluetooth battery reporting was not tested. The reported percentage can jump to 100% when USB power is attached, which is not a reliable charging indicator.
+- EPOMAKER EA75 on its `05AC:024F` 2.4 GHz receiver, using the existing SONiX driver from PR #60 of the original repository. Battery percentage, receiver reconnection and power-on recovery were verified. Charging indication and wired battery reporting are not supported by this driver; Bluetooth battery reporting was not tested. The reported percentage can jump to 100% when USB power is attached, which is not a reliable charging indicator.
 - SteelSeries Aerox 3 Wireless CS2 Dragon Lore Edition (receiver `1038:1878` and USB cable `1038:187A`), including charging, switching off (the last level stays, dimmed) and with SteelSeries GG running; GG only shows a three-step bar, which the level matched.
 - RAWM Leviathan V4 (RAWM HS Receiver `1915:2346`; battery level read, charging untested).
 
-**Hardware coverage:** Devices without recorded hardware confirmation are implemented from protocol documentation and other projects. Fantech Raigor II WG10 is still untested (it shares the tested Raigor III's `1EA7:0066` dongle and collection). If you own an untested device, please report whether it works by [opening an issue](https://github.com/krisgfx9/Wireless-Device-Battery-Monitor/issues).
+**Hardware coverage:** Devices without recorded hardware confirmation are implemented from protocol documentation and other projects. Fantech Raigor II WG10 is still untested (it shares the tested Raigor III's `1EA7:0066` dongle and collection). If you own an untested device, please report whether it works by [opening an issue](https://github.com/zainnoori/Wireless-Device-Battery-Monitor/issues).
 
 ## Install
 
-[![Latest version](https://img.shields.io/github/v/release/krisgfx9/Wireless-Device-Battery-Monitor?label=latest%20version&style=for-the-badge)](https://github.com/krisgfx9/Wireless-Device-Battery-Monitor/releases/latest)
+[![Latest version](https://img.shields.io/github/v/release/zainnoori/Wireless-Device-Battery-Monitor?label=latest%20version&style=for-the-badge)](https://github.com/zainnoori/Wireless-Device-Battery-Monitor/releases/latest)
 
-1. Download **`BatteryHub-Setup-<version>.exe`** from the [latest release](https://github.com/krisgfx9/Wireless-Device-Battery-Monitor/releases/latest).
+1. Download **`BatteryHub-Setup-<version>.exe`** from the [latest release](https://github.com/zainnoori/Wireless-Device-Battery-Monitor/releases/latest).
 2. Run the installer. The default per-user installation needs no administrator rights.
    **Install for all users** requires administrator permission. Windows may show a SmartScreen warning because the app is not code-signed (see below).
 3. No separate runtime is required. HeadsetControl is bundled for the headsets that use it; check your device's table entry and [Limitations](#limitations) for any setup or firmware requirements.
@@ -437,7 +437,7 @@ by [nik-txt](https://github.com/nik-txt) (`res/app.svg`), on a macOS-style tile.
 
 <img src="docs/macos-installer.png" alt="The BatteryHub installer: drag BatteryHub onto the Applications folder; below it, where to find the app after installing" width="480">
 
-1. Download **`BatteryHub-<version>-macos.dmg`** from the [latest release](https://github.com/zainudinnoori/Wireless-Device-Battery-Monitor/releases/latest).
+1. Download **`BatteryHub-<version>-macos.dmg`** from the [latest release](https://github.com/zainnoori/Wireless-Device-Battery-Monitor/releases/latest).
 2. Open it and drag **BatteryHub** into **Applications**, then open it from there. Releases are signed with a
    Developer ID and notarized by Apple, so macOS opens BatteryHub without a security warning.
 3. Allow **Input Monitoring** when asked (see below). BatteryHub has no window or Dock icon: it lives in the **menu bar**,

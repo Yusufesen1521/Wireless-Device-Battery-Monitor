@@ -1,4 +1,3 @@
-# Shows the Sponsor button on the repository page.
-github: krisgfx9
-ko_fi: krisgfx
-custom: ["https://www.paypal.com/paypalme/krisgfx"]
+# Shows the Sponsor button on the repository page: the fork's maintainer first, then the original author.
+ko_fi: zainnoori
+custom: ["https://ko-fi.com/krisgfx", "https://www.paypal.com/paypalme/krisgfx"]
