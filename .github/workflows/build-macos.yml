@@ -13,6 +13,8 @@ permissions:
 jobs:
   build:
     runs-on: macos-latest
+    outputs:
+      notarized: ${{ steps.notarize.outputs.notarized }}
     steps:
       # Actions are pinned to exact commits so a moved tag cannot swap in different code.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -31,11 +33,40 @@ jobs:
           esac
           echo "WB_VERSION=$version" >> "$GITHUB_ENV"
 
+      # Release signing, for version tags only and only when the maintainer has added the secrets
+      # (forks and pull requests never see them and keep the ad-hoc build). The certificate goes into
+      # a temporary keychain that disappears with the runner.
+      - name: Import the Developer ID certificate
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        run: |
+          if [ -z "$MACOS_CERT_P12" ] || [ -z "$MACOS_CERT_PASSWORD" ]; then
+            echo "No signing secrets: building with an ad-hoc signature."
+            exit 0
+          fi
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          keychain_password="$(openssl rand -base64 24)"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          printf '%s' "$MACOS_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$keychain" -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign
+          rm -f "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$keychain_password" "$keychain" >/dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          security find-identity -v -p codesigning "$keychain" | grep -q "Developer ID Application" || {
+            echo "The certificate in MACOS_CERT_P12 is not a Developer ID Application certificate." >&2
+            exit 1
+          }
+          echo "SIGN_IDENTITY=Developer ID Application" >> "$GITHUB_ENV"
+
       - name: Build (universal arm64 + x86_64)
-        run: ./build-mac.sh universal VERSION="$WB_VERSION"
+        run: ./build-mac.sh universal VERSION="$WB_VERSION" SIGN_IDENTITY="${SIGN_IDENTITY:--}"
 
       - name: Test
-        run: ./build-mac.sh test VERSION="$WB_VERSION"
+        run: ./build-mac.sh test VERSION="$WB_VERSION" SIGN_IDENTITY="${SIGN_IDENTITY:--}"
 
       - name: Smoke test the command line
         run: |
@@ -43,10 +74,29 @@ jobs:
           ./batteryhub --dump
           ./batteryhub --json
           lipo -info BatteryHub.app/Contents/MacOS/BatteryHub
-          codesign --verify --verbose BatteryHub.app
+          codesign --verify --strict --verbose BatteryHub.app
 
       - name: Package the disk image
-        run: ./build-mac.sh dmg VERSION="$WB_VERSION" ARCHFLAGS="-arch arm64 -arch x86_64"
+        run: ./build-mac.sh dmg VERSION="$WB_VERSION" ARCHFLAGS="-arch arm64 -arch x86_64" SIGN_IDENTITY="${SIGN_IDENTITY:--}"
+
+      - name: Notarize with Apple
+        id: notarize
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: |
+          if [ -z "${SIGN_IDENTITY:-}" ] || [ -z "$NOTARY_KEY_P8" ] || [ -z "$NOTARY_KEY_ID" ] || [ -z "$NOTARY_ISSUER" ]; then
+            echo "No signing or notarization secrets: the disk image is not notarized."
+            echo "notarized=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          export NOTARY_KEY="$RUNNER_TEMP/AuthKey.p8"
+          printf '%s' "$NOTARY_KEY_P8" | base64 --decode > "$NOTARY_KEY"
+          sh mac/notarize.sh "BatteryHub-$WB_VERSION-macos.dmg"
+          rm -f "$NOTARY_KEY"
+          echo "notarized=true" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -72,5 +122,5 @@ jobs:
           append_body: true
           body: |
             **macOS:** download `BatteryHub-*-macos.dmg`, open it and drag BatteryHub into Applications.
-            The app is not notarized by Apple: on first launch, open *System Settings → Privacy & Security*
-            and click *Open Anyway*. Enjoying the macOS port? Support it on [Ko-fi](https://ko-fi.com/zainnoori).
+            ${{ needs.build.outputs.notarized == 'true' && 'Signed with a Developer ID and notarized by Apple: it opens without security warnings.' || 'The app is not notarized by Apple: on first launch, open *System Settings → Privacy & Security* and click *Open Anyway*.' }}
+            BatteryHub lives in the menu bar. Enjoying the macOS port? Support it on [Ko-fi](https://ko-fi.com/zainnoori).

@@ -5,7 +5,13 @@
 # ./build-mac.sh              build BatteryHub.app (menu-bar app) and ./batteryhub (CLI)
 # ./build-mac.sh universal    the same, as arm64 + x86_64 universal binaries
 # ./build-mac.sh test         run the shared JSON output test
+# ./build-mac.sh dmg          the drag-to-install disk image
 # ./build-mac.sh clean
+#
+# Release signing (optional; the default is an ad-hoc signature, which needs no Apple account):
+#   SIGN_IDENTITY="Developer ID Application"   sign the app and the disk image with that identity,
+#                                              with the hardened runtime and a secure timestamp
+#   ./build-mac.sh notarize ...                notarize and staple the disk image (mac/notarize.sh)
 
 CXX       ?= clang++
 VERSION   ?= 0.0.0
@@ -49,11 +55,25 @@ $(VERSION_STAMP):
 	@rm -f build/mac/version-*.stamp
 	@touch $@
 
-$(APP): $(APP_BIN) mac/Info.plist mac/AppIcon.icns mac/MenuIcon.png mac/MenuIcon@2x.png $(VERSION_STAMP)
+# Code signing. Ad-hoc ("-") by default: enough to run locally and to keep the Input Monitoring
+# permission. With a Developer ID identity the app gets the hardened runtime and a secure timestamp,
+# which notarization requires. Changing the identity re-signs the app.
+SIGN_IDENTITY ?= -
+ifeq ($(SIGN_IDENTITY),-)
+CODESIGN_FLAGS :=
+else
+CODESIGN_FLAGS := --options runtime --timestamp
+endif
+SIGN_STAMP := build/mac/sign-$(shell printf '%s' '$(SIGN_IDENTITY)' | shasum | cut -c1-12).stamp
+$(SIGN_STAMP):
+	@mkdir -p build/mac
+	@rm -f build/mac/sign-*.stamp
+	@touch $@
+
+$(APP): $(APP_BIN) mac/Info.plist mac/AppIcon.icns mac/MenuIcon.png mac/MenuIcon@2x.png $(VERSION_STAMP) $(SIGN_STAMP)
 	sed 's/@VERSION@/$(VERSION)/g' mac/Info.plist > $(APP)/Contents/Info.plist
 	cp mac/AppIcon.icns mac/MenuIcon.png mac/MenuIcon@2x.png $(APP)/Contents/Resources/
-	# Ad-hoc signature: macOS keeps the Input Monitoring permission tied to a signed bundle.
-	codesign --force --sign - $(APP)
+	codesign --force --sign "$(SIGN_IDENTITY)" $(CODESIGN_FLAGS) $(APP)
 	@touch $(APP)
 
 build/mac/%.o: src/%.cpp
@@ -85,7 +105,12 @@ $(DMGBUILD):
 dmg: $(APP) $(DMGBUILD) mac/dmg_settings.py mac/dmg-background.tiff
 	rm -f $(DMG)
 	$(DMGBUILD) -s mac/dmg_settings.py -D app=$(APP) "BatteryHub" $(DMG)
+	@if [ "$(SIGN_IDENTITY)" != "-" ]; then codesign --force --timestamp --sign "$(SIGN_IDENTITY)" $(DMG); fi
 	@echo "Created $(DMG)"
+
+# Apple notarization of the signed disk image; see mac/notarize.sh for the credentials it reads.
+notarize: dmg
+	sh mac/notarize.sh $(DMG)
 
 # Regenerate the icon and the disk-image background after changing res/app.svg or the artwork code.
 artwork:
@@ -109,4 +134,4 @@ test: $(CLI)
 clean:
 	rm -rf build/mac $(APP) $(CLI) BatteryHub-*-macos.dmg
 
-.PHONY: all universal dmg artwork test clean
+.PHONY: all universal dmg notarize artwork test clean
