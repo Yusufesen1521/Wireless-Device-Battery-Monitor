@@ -1,6 +1,5 @@
 // Draws the background of the BatteryHub disk-image window, mac/dmg-background.tiff (1x + 2x):
-// a title, an arrow from the app to the Applications folder, and the first-launch step for an app
-// that is not notarized. The icon positions must match mac/dmg_settings.py.
+// a title, an arrow from the app to the Applications folder, and where to find the app afterwards. The icon positions must match mac/dmg_settings.py.
 //
 //   swift mac/make_dmg_background.swift      (from the repository root)
 
@@ -66,9 +65,9 @@ func draw(scale: CGFloat) -> NSBitmapImageRep {
     let border = NSBezierPath(roundedRect: card.insetBy(dx: 0.5, dy: 0.5), xRadius: 12, yRadius: 12)
     border.lineWidth = 1
     border.stroke()
-    text("First launch", size: 13, weight: .semibold, color: ink, top: H - card.maxY + 12)
-    text("If macOS says it can't verify BatteryHub, open System Settings → Privacy & Security,\n"
-         + "scroll down and click “Open Anyway”. You only need to do this once.",
+    text("After installing", size: 13, weight: .semibold, color: ink, top: H - card.maxY + 12)
+    text("BatteryHub lives in the menu bar at the top of the screen (headphones icon), with no window.\n"
+         + "Allow Input Monitoring when asked, so it can read devices on 2.4 GHz receivers.",
          size: 12, weight: .regular, color: muted, top: H - card.maxY + 34)
 
     NSGraphicsContext.restoreGraphicsState()

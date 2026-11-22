@@ -435,14 +435,12 @@ by [nik-txt](https://github.com/nik-txt) (`res/app.svg`), on a macOS-style tile.
 
 ### Download for Mac
 
-<img src="docs/macos-installer.png" alt="The BatteryHub installer: drag BatteryHub onto the Applications folder; first-launch steps below" width="480">
+<img src="docs/macos-installer.png" alt="The BatteryHub installer: drag BatteryHub onto the Applications folder; below it, where to find the app after installing" width="480">
 
 1. Download **`BatteryHub-<version>-macos.dmg`** from the [latest release](https://github.com/zainudinnoori/Wireless-Device-Battery-Monitor/releases/latest).
-2. Open it and drag **BatteryHub** into **Applications**.
-3. The first time, macOS blocks the app because it is not notarized by Apple. Open *System Settings → Privacy &
-   Security*, scroll down and click **Open Anyway** next to the BatteryHub message. On macOS 14 and older, you can
-   instead right-click the app and choose **Open**.
-4. Allow **Input Monitoring** when asked (see below). BatteryHub has no window or Dock icon: it lives in the **menu bar**,
+2. Open it and drag **BatteryHub** into **Applications**, then open it from there. Releases are signed with a
+   Developer ID and notarized by Apple, so macOS opens BatteryHub without a security warning.
+3. Allow **Input Monitoring** when asked (see below). BatteryHub has no window or Dock icon: it lives in the **menu bar**,
    shown as a small headphones icon until a device is found. Its menu opens by itself on the first launch, and again whenever you open BatteryHub while it is running.
 
 ### Build from source
@@ -467,11 +465,13 @@ when a HID device is plugged in.
 - **Input Monitoring:** macOS asks for this permission the first time the app runs. A device whose
   HID interface also carries keyboard or mouse input can only be read with it. Grant it in *System
   Settings → Privacy & Security → Input Monitoring*, or run *Allow Input Monitoring…* from the menu. For the
-  command line, the permission goes to your terminal app instead. The local build is ad-hoc signed, so macOS
-  identifies it by a hash of its code. **After a rebuild, the permission no longer applies:** remove BatteryHub
-  from the Input Monitoring list with the *–* button and allow it again.
-- **Unsigned app:** the build is only ad-hoc signed. If you copy it to another Mac, right-click it and choose *Open* the
-  first time.
+  command line, the permission goes to your terminal app instead. Released versions keep the permission across
+  updates. A build from source is ad-hoc signed, so macOS identifies it by a hash of its code: **after a rebuild
+  the permission no longer applies**, so remove BatteryHub from the Input Monitoring list with the *–* button and
+  allow it again.
+- **Signing:** tagged releases are signed with a Developer ID and notarized by the `build-macos` workflow
+  (`mac/notarize.sh`). A build from source is ad-hoc signed and meant for your own Mac; to sign and notarize one
+  yourself, see the release-signing notes at the top of `mac/Makefile.mac`.
 - **Coverage:** all HID vendor drivers are included (95 of them: Logitech, Razer, SteelSeries, Corsair, HyperX,
   Keychron, Pulsar, Glorious, ASTRO, PlayStation, ...).
 - **Bluetooth:** after the vendor drivers, BatteryHub shows every level macOS itself knows. These come from the
