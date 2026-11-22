@@ -49,9 +49,9 @@ $(VERSION_STAMP):
 	@rm -f build/mac/version-*.stamp
 	@touch $@
 
-$(APP): $(APP_BIN) mac/Info.plist mac/AppIcon.icns $(VERSION_STAMP)
+$(APP): $(APP_BIN) mac/Info.plist mac/AppIcon.icns mac/MenuIcon.png mac/MenuIcon@2x.png $(VERSION_STAMP)
 	sed 's/@VERSION@/$(VERSION)/g' mac/Info.plist > $(APP)/Contents/Info.plist
-	cp mac/AppIcon.icns $(APP)/Contents/Resources/AppIcon.icns
+	cp mac/AppIcon.icns mac/MenuIcon.png mac/MenuIcon@2x.png $(APP)/Contents/Resources/
 	# Ad-hoc signature: macOS keeps the Input Monitoring permission tied to a signed bundle.
 	codesign --force --sign - $(APP)
 	@touch $(APP)

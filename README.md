@@ -442,7 +442,8 @@ by [nik-txt](https://github.com/nik-txt) (`res/app.svg`), on a macOS-style tile.
 3. The first time, macOS blocks the app because it is not notarized by Apple. Open *System Settings → Privacy &
    Security*, scroll down and click **Open Anyway** next to the BatteryHub message. On macOS 14 and older, you can
    instead right-click the app and choose **Open**.
-4. Allow **Input Monitoring** when asked (see below). BatteryHub then sits in the menu bar.
+4. Allow **Input Monitoring** when asked (see below). BatteryHub has no window or Dock icon: it lives in the **menu bar**,
+   shown as a small headphones icon until a device is found. Its menu opens by itself on the first launch, and again whenever you open BatteryHub while it is running.
 
 ### Build from source
 

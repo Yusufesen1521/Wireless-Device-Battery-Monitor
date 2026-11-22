@@ -40,6 +40,8 @@ NSString* const kQuitNotification = @"com.github.krisgfx9.BatteryHub.quit";
 NSString* const kBundleId = @"com.github.krisgfx9.BatteryHub";
 NSString* const kHiddenKey = @"HiddenDevices";
 NSString* const kHideLastKnownKey = @"HideLastKnown";
+NSString* const kShowNotification = @"com.github.krisgfx9.BatteryHub.show";
+NSString* const kWelcomedKey = @"ShownWelcomeMenu";
 
 // ---- presentation helpers ---------------------------------------------------------------------
 
@@ -213,6 +215,21 @@ std::vector<DeviceStatus> DemoDevices() {
                                                         selector:@selector(quit:)
                                                             name:kQuitNotification
                                                           object:nil];
+    // Opening BatteryHub again (Finder, Launchpad, Spotlight) while it runs: show this one's menu.
+    [[NSDistributedNotificationCenter defaultCenter] addObserver:self
+                                                        selector:@selector(showMenu:)
+                                                            name:kShowNotification
+                                                          object:nil
+                                                suspensionBehavior:NSNotificationSuspensionBehaviorDeliverImmediately];
+
+    // A menu-bar app has no window or Dock icon, so on the very first launch open the menu once to
+    // show where BatteryHub lives.
+    if (!g_demo && ![d boolForKey:kWelcomedKey]) {
+        [d setBool:YES forKey:kWelcomedKey];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [self.item.button performClick:nil];
+        });
+    }
     [[[NSWorkspace sharedWorkspace] notificationCenter] addObserver:self
                                                            selector:@selector(refresh:)
                                                                name:NSWorkspaceDidWakeNotification
@@ -220,6 +237,30 @@ std::vector<DeviceStatus> DemoDevices() {
     [self watchHidArrivals];
 
     g_poller.thread = std::thread([self] { [self pollLoop]; });
+}
+
+- (NSImage*)menuGlyph {
+    static NSImage* glyph = [] {
+        NSImage* img = [NSBundle.mainBundle imageForResource:@"MenuIcon"];  // MenuIcon.png + @2x
+        [img setTemplate:YES];  // tinted by macOS for light and dark menu bars ("template" is a C++ keyword)
+        img.size = NSMakeSize(18, 18);
+        img.accessibilityDescription = @"BatteryHub";
+        return img;
+    }();
+    return glyph;
+}
+
+- (void)showMenu:(id)sender {
+    [self.item.button performClick:nil];
+}
+
+// Double-clicking BatteryHub (Finder, Launchpad, Spotlight) while it runs makes macOS "reopen" this
+// instance instead of starting another one: show the menu, since there is no window to bring up.
+- (BOOL)applicationShouldHandleReopen:(NSApplication*)sender hasVisibleWindows:(BOOL)visible {
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self showMenu:nil];
+    });
+    return NO;
 }
 
 - (void)applicationWillTerminate:(NSNotification*)note {
@@ -300,8 +341,12 @@ static void OnHidAdded(void* refcon, io_iterator_t it) {
             [title appendAttributedString:SymbolString(@"bolt.fill", @"⚡", [NSColor systemBlueColor], font)];
         [tips addObject:NS(s.name + L": " + StatusText(s))];
     }
-    if (!title.length)
+    // No device to show: the BatteryHub glyph, so the item is recognisable and is not mistaken for
+    // the Mac's own battery icon. (Outside the app bundle, e.g. a bare build, fall back to a symbol.)
+    NSImage* glyph = title.length ? nil : [self menuGlyph];
+    if (!title.length && !glyph)
         [title appendAttributedString:SymbolString(@"battery.0", @"🔋", [NSColor labelColor], font)];
+    self.item.button.image = glyph;
     self.item.button.attributedTitle = title;
     self.item.button.toolTip = tips.count ? [tips componentsJoinedByString:@"\n"]
                                           : (self.hasResults ? @"BatteryHub: no devices found" : @"BatteryHub: checking…");
@@ -471,7 +516,13 @@ int main(int argc, char** argv) {
         NSString* myId = NSBundle.mainBundle.bundleIdentifier ?: kBundleId;
         for (NSRunningApplication* app in [NSRunningApplication runningApplicationsWithBundleIdentifier:myId])
             if (app.processIdentifier != getpid()) {
-                fprintf(stderr, "BatteryHub is already running.\n");
+                // Opened again: instead of quitting silently, open the running instance's menu so
+                // the user sees where it is.
+                fprintf(stderr, "BatteryHub is already running; showing its menu.\n");
+                [[NSDistributedNotificationCenter defaultCenter] postNotificationName:kShowNotification
+                                                                               object:nil
+                                                                             userInfo:nil
+                                                                   deliverImmediately:YES];
                 return 0;
             }
 

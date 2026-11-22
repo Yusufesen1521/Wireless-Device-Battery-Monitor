@@ -127,6 +127,34 @@ for base in [16, 32, 128, 256, 512] {
 try render(1024).representation(using: .png, properties: [:])!
     .write(to: root.appendingPathComponent("mac/AppIcon-1024.png"))
 
+// Menu-bar glyph (shown while no device is found): the same glyph, black on transparent, used as a
+// template image so macOS tints it for light and dark menu bars. 18 pt tall, at 1x and 2x.
+func menuGlyph(scale: Int) -> NSBitmapImageRep {
+    let side = 18 * scale
+    let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: side, pixelsHigh: side, bitsPerSample: 8,
+                               samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+                               bytesPerRow: 0, bitsPerPixel: 0)!
+    rep.size = NSSize(width: 18, height: 18)
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+    let g = glyph.copy() as! NSBezierPath
+    let b = g.bounds
+    // rep.size is 18 pt, so drawing coordinates are points (the 2x bitmap maps them to 36 px).
+    let fit = 18 * 0.94 / max(b.width, b.height)
+    // x' = (x - midX) * fit + side/2,  y' = -(y - midY) * fit + side/2  (SVG y points down)
+    let half: CGFloat = 9
+    g.transform(using: AffineTransform(m11: fit, m12: 0, m21: 0, m22: -fit,
+                                       tX: half - b.midX * fit, tY: half + b.midY * fit))
+    NSColor.black.setFill()
+    g.fill()
+    NSGraphicsContext.restoreGraphicsState()
+    return rep
+}
+try menuGlyph(scale: 1).representation(using: .png, properties: [:])!
+    .write(to: root.appendingPathComponent("mac/MenuIcon.png"))
+try menuGlyph(scale: 2).representation(using: .png, properties: [:])!
+    .write(to: root.appendingPathComponent("mac/MenuIcon@2x.png"))
+
 let task = Process()
 task.executableURL = URL(fileURLWithPath: "/usr/bin/iconutil")
 task.arguments = ["-c", "icns", iconset.path, "-o", root.appendingPathComponent("mac/AppIcon.icns").path]
