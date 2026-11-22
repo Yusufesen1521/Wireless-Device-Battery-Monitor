@@ -30,10 +30,12 @@ inline std::string WideToUtf8(const std::wstring& s) {
 inline unsigned long long PlatNowMs() { return GetTickCount64(); }
 inline void PlatSleep(unsigned long ms) { Sleep(ms); }
 
-#else  // __linux__
+#else  // __linux__ and __APPLE__ (both POSIX; std::wstring is UTF-32 on each)
 
+#include <cerrno>
 #include <chrono>
 #include <cstdint>
+#include <cwchar>
 #include <thread>
 
 // Types used by the shared drivers that originally came from <windows.h>.
@@ -54,6 +56,10 @@ inline ULONGLONG GetTickCount64() {
 inline void Sleep(DWORD ms) { std::this_thread::sleep_for(std::chrono::milliseconds(ms)); }
 inline unsigned long long PlatNowMs() { return GetTickCount64(); }
 inline void PlatSleep(unsigned long ms) { Sleep((DWORD)ms); }
+
+// Used by a few drivers' --dump diagnostics and name comparisons.
+inline DWORD GetLastError() { return (DWORD)errno; }
+inline int _wcsicmp(const wchar_t* a, const wchar_t* b) { return wcscasecmp(a, b); }
 
 // std::wstring is UTF-32 on Linux; hidapi/sysfs paths and names are UTF-8.
 inline std::wstring Utf8ToWide(const std::string& s) {

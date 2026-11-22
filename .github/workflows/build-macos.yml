@@ -1,0 +1,76 @@
+name: build-macos
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+# Read-only by default: builds of pull requests cannot change the repository or releases.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      # Actions are pinned to exact commits so a moved tag cannot swap in different code.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Select version
+        run: |
+          version=0.0.0
+          case "$GITHUB_REF" in
+            refs/tags/v*)
+              version="${GITHUB_REF_NAME#v}"
+              if ! printf '%s' "$version" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'; then
+                echo 'Unsupported release tag' >&2
+                exit 1
+              fi
+              ;;
+          esac
+          echo "WB_VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Build (universal arm64 + x86_64)
+        run: ./build-mac.sh universal VERSION="$WB_VERSION"
+
+      - name: Test
+        run: ./build-mac.sh test VERSION="$WB_VERSION"
+
+      - name: Smoke test the command line
+        run: |
+          ./batteryhub --help
+          ./batteryhub --dump
+          ./batteryhub --json
+          lipo -info BatteryHub.app/Contents/MacOS/BatteryHub
+          codesign --verify --verbose BatteryHub.app
+
+      - name: Package the disk image
+        run: ./build-mac.sh dmg VERSION="$WB_VERSION" ARCHFLAGS="-arch arm64 -arch x86_64"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: BatteryHub-macos
+          path: BatteryHub-*-macos.dmg
+
+  # Only this job can publish, and only for version tags pushed by the maintainer. It adds the disk
+  # image to the same GitHub Release the Windows workflow creates for the tag.
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: BatteryHub-macos
+          path: dist
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          files: dist/*
+          append_body: true
+          body: |
+            **macOS:** download `BatteryHub-*-macos.dmg`, open it and drag BatteryHub into Applications.
+            The app is not notarized by Apple: on first launch, open *System Settings → Privacy & Security*
+            and click *Open Anyway*. Enjoying the macOS port? Support it on [Ko-fi](https://ko-fi.com/zainnoori).

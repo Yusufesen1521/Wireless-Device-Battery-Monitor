@@ -17,7 +17,7 @@ option(WB_BUILD_WINDOWS "Build the Windows MinGW port" OFF)
 
 include(WBVersion)
 
-if(WB_BUILD_LINUX AND NOT WIN32)
+if(WB_BUILD_LINUX AND NOT WIN32 AND NOT APPLE)
     add_subdirectory(src)
     add_subdirectory(src/linux)
     include(WBInstall)
@@ -27,11 +27,15 @@ if(WB_BUILD_WINDOWS)
     add_subdirectory(src/windows)
 endif()
 
+if(APPLE)
+    message(STATUS "The macOS port is built with ./build-mac.sh (mac/Makefile.mac), not CMake.")
+endif()
+
 if(WB_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
 
-if(WB_BUILD_LINUX AND NOT WIN32)
+if(WB_BUILD_LINUX AND NOT WIN32 AND NOT APPLE)
     include(WBPackaging)
 endif()

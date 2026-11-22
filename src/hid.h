@@ -58,6 +58,8 @@ public:
     void Close();
 #ifdef _WIN32
     bool ok() const { return h_ != INVALID_HANDLE_VALUE; }
+#elif defined(__APPLE__)
+    bool ok() const { return mac_ != nullptr; }
 #else
     bool ok() const { return fd_ >= 0; }
 #endif
@@ -88,6 +90,8 @@ private:
 #ifdef _WIN32
     HANDLE h_ = INVALID_HANDLE_VALUE;
     bool overlapped_ = false;
+#elif defined(__APPLE__)
+    struct MacHid* mac_ = nullptr;  // IOHIDDeviceRef + input-report queue (src/mac/hid_mac.cpp)
 #else
     int fd_ = -1;  // /dev/hidrawN
 #endif

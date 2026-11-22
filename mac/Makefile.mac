@@ -1,0 +1,99 @@
+# macOS build (experimental). Kept separate from the Windows Makefile and linux/Makefile.linux so
+# those builds stay untouched. Needs only the Xcode Command Line Tools (xcode-select --install):
+# HID access goes through IOKit and the menu-bar item through AppKit, so no extra library is needed.
+#
+# ./build-mac.sh              build BatteryHub.app (menu-bar app) and ./batteryhub (CLI)
+# ./build-mac.sh universal    the same, as arm64 + x86_64 universal binaries
+# ./build-mac.sh test         run the shared JSON output test
+# ./build-mac.sh clean
+
+CXX       ?= clang++
+VERSION   ?= 0.0.0
+ARCHFLAGS ?=
+MIN_MACOS ?= 11.0
+CXXFLAGS  ?= -std=c++17 -O2 -Wall -Wno-missing-field-initializers
+CXXFLAGS  += $(ARCHFLAGS) -mmacosx-version-min=$(MIN_MACOS)
+OBJCXXFLAGS = $(CXXFLAGS) -fobjc-arc
+LIBS      := -framework IOKit -framework CoreFoundation
+APP_LIBS  := $(LIBS) -framework AppKit -framework ServiceManagement
+
+# Every vendor driver except the ones built on Windows-only APIs (WinRT Bluetooth / BLE, XInput,
+# SetupAPI, Winsock, Phone Link, HeadsetControl, the Windows HID battery fallback, and the
+# "no battery info" list, which needs the Windows device-container lookup).
+WINDOWS_ONLY := airpods_aap airpods armorx atk_serial ble_adverts fastpair galaxy_buds gamesir_ble \
+                generic headsetcontrol jbl_speaker marshall nothing_ear nuphy_halo96 phonelink \
+                sony_headphones sony_inzone soundcore xinput \
+                unsupported
+DRIVERS := $(filter-out $(patsubst %,src/drivers/%.cpp,$(WINDOWS_ONLY)),$(wildcard src/drivers/*.cpp))
+
+CORE_SRC := src/mac/hid_mac.cpp src/mac/devices_mac.cpp $(DRIVERS)
+CORE_OBJ := $(patsubst src/%.cpp,build/mac/%.o,$(CORE_SRC)) build/mac/mac/bluetooth_mac.o
+
+APP      := BatteryHub.app
+CLI      := batteryhub
+APP_BIN  := $(APP)/Contents/MacOS/BatteryHub
+
+all: $(APP) $(CLI)
+
+$(CLI): $(CORE_OBJ) build/mac/mac/main_mac.o
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(APP_LIBS)
+
+$(APP_BIN): $(CLI)
+	@mkdir -p $(dir $@) $(APP)/Contents/Resources
+	cp $(CLI) $@
+
+# Rebuild the version-stamped parts when VERSION changes.
+VERSION_STAMP := build/mac/version-$(VERSION).stamp
+$(VERSION_STAMP):
+	@mkdir -p build/mac
+	@rm -f build/mac/version-*.stamp
+	@touch $@
+
+$(APP): $(APP_BIN) mac/Info.plist $(VERSION_STAMP)
+	sed 's/@VERSION@/$(VERSION)/g' mac/Info.plist > $(APP)/Contents/Info.plist
+	# Ad-hoc signature: macOS keeps the Input Monitoring permission tied to a signed bundle.
+	codesign --force --sign - $(APP)
+	@touch $(APP)
+
+build/mac/%.o: src/%.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+build/mac/mac/bluetooth_mac.o: src/mac/bluetooth_mac.mm src/drivers/drivers.h src/devices.h
+	@mkdir -p $(dir $@)
+	$(CXX) $(OBJCXXFLAGS) -c $< -o $@
+
+build/mac/mac/main_mac.o: src/mac/main_mac.mm src/json_output.h src/devices.h $(VERSION_STAMP)
+	@mkdir -p $(dir $@)
+	$(CXX) $(OBJCXXFLAGS) -DAPP_VERSION='"$(VERSION)"' -c $< -o $@
+
+universal:
+	$(MAKE) -f mac/Makefile.mac ARCHFLAGS="-arch arm64 -arch x86_64"
+
+# Drag-to-install disk image: BatteryHub.app next to a link to /Applications.
+DMG := BatteryHub-$(VERSION)-macos.dmg
+dmg: $(APP)
+	rm -rf build/mac/dmg $(DMG)
+	mkdir -p build/mac/dmg
+	cp -R $(APP) build/mac/dmg/
+	ln -s /Applications build/mac/dmg/Applications
+	hdiutil create -volname "BatteryHub" -srcfolder build/mac/dmg -fs HFS+ -format UDZO -ov $(DMG)
+	@echo "Created $(DMG)"
+
+test: $(CLI)
+	@mkdir -p build/mac
+	$(CXX) $(CXXFLAGS) tests/json_output_test.cpp -o build/mac/json_output_test
+	./build/mac/json_output_test
+	@# Bluetooth reader against a saved system_profiler listing: earbuds, main level, no level, not connected.
+	@out="$$(BATTERYHUB_BT_PROFILE=tests/data/mac_bluetooth_profile.json ./$(CLI) --list)"; \
+	echo "$$out" | grep -q 'Sample AirPods Pro  \[Bluetooth\]  95% (L 100%, R 95%, case 40%)' && \
+	echo "$$out" | grep -q 'Sample Magic Keyboard  \[Bluetooth\]  76%' && \
+	echo "$$out" | grep -q 'Sample Headset  \[Bluetooth\]  10%' && \
+	! echo "$$out" | grep -q 'Sample Speaker' && \
+	! echo "$$out" | grep -q 'Sample Disconnected' && \
+	echo "mac bluetooth test: OK" || { echo "mac bluetooth test: FAILED"; echo "$$out"; exit 1; }
+
+clean:
+	rm -rf build/mac $(APP) $(CLI) BatteryHub-*-macos.dmg
+
+.PHONY: all universal dmg test clean

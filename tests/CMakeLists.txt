@@ -1,7 +1,7 @@
 # Platform-appropriate tests. The Linux tests mirror linux/Makefile.linux;
 # Windows tests remain driven by the root Makefile for now.
 
-if(WB_BUILD_LINUX AND NOT WIN32)
+if(WB_BUILD_LINUX AND NOT WIN32 AND NOT APPLE)
     add_executable(linux_hid_test linux_hid_test.cpp)
     target_link_libraries(linux_hid_test PRIVATE wb_headers wb_drivers)
     target_compile_options(linux_hid_test PRIVATE -Wall -Wno-missing-field-initializers)
