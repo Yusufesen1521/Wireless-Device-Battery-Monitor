@@ -49,8 +49,9 @@ $(VERSION_STAMP):
 	@rm -f build/mac/version-*.stamp
 	@touch $@
 
-$(APP): $(APP_BIN) mac/Info.plist $(VERSION_STAMP)
+$(APP): $(APP_BIN) mac/Info.plist mac/AppIcon.icns $(VERSION_STAMP)
 	sed 's/@VERSION@/$(VERSION)/g' mac/Info.plist > $(APP)/Contents/Info.plist
+	cp mac/AppIcon.icns $(APP)/Contents/Resources/AppIcon.icns
 	# Ad-hoc signature: macOS keeps the Input Monitoring permission tied to a signed bundle.
 	codesign --force --sign - $(APP)
 	@touch $(APP)
@@ -70,15 +71,27 @@ build/mac/mac/main_mac.o: src/mac/main_mac.mm src/json_output.h src/devices.h $(
 universal:
 	$(MAKE) -f mac/Makefile.mac ARCHFLAGS="-arch arm64 -arch x86_64"
 
-# Drag-to-install disk image: BatteryHub.app next to a link to /Applications.
+# Drag-to-install disk image: BatteryHub.app, an arrow and the Applications folder over a background
+# with the first-launch steps (mac/dmg_settings.py), and the app icon as the volume icon.
+# dmgbuild (Python) writes the window layout without Finder, so this also works in CI; it is
+# installed into build/mac/venv on first use.
 DMG := BatteryHub-$(VERSION)-macos.dmg
-dmg: $(APP)
-	rm -rf build/mac/dmg $(DMG)
-	mkdir -p build/mac/dmg
-	cp -R $(APP) build/mac/dmg/
-	ln -s /Applications build/mac/dmg/Applications
-	hdiutil create -volname "BatteryHub" -srcfolder build/mac/dmg -fs HFS+ -format UDZO -ov $(DMG)
+DMGBUILD_VERSION := 1.6.7
+DMGBUILD := build/mac/venv/bin/dmgbuild
+$(DMGBUILD):
+	python3 -m venv build/mac/venv
+	build/mac/venv/bin/pip install --quiet --disable-pip-version-check dmgbuild==$(DMGBUILD_VERSION)
+
+dmg: $(APP) $(DMGBUILD) mac/dmg_settings.py mac/dmg-background.tiff
+	rm -f $(DMG)
+	$(DMGBUILD) -s mac/dmg_settings.py -D app=$(APP) "BatteryHub" $(DMG)
 	@echo "Created $(DMG)"
+
+# Regenerate the icon and the disk-image background after changing res/app.svg or the artwork code.
+artwork:
+	swift mac/make_icon.swift
+	@mkdir -p build/mac
+	swift mac/make_dmg_background.swift
 
 test: $(CLI)
 	@mkdir -p build/mac
@@ -96,4 +109,4 @@ test: $(CLI)
 clean:
 	rm -rf build/mac $(APP) $(CLI) BatteryHub-*-macos.dmg
 
-.PHONY: all universal dmg test clean
+.PHONY: all universal dmg artwork test clean

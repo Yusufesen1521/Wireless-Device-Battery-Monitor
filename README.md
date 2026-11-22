@@ -7,17 +7,10 @@
 >
 > [![Support the macOS port on Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20the%20macOS%20port-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/zainnoori)
 > [![Star this fork](https://img.shields.io/github/stars/zainudinnoori/Wireless-Device-Battery-Monitor?style=flat&logo=github&label=Star%20the%20macOS%20fork)](https://github.com/zainudinnoori/Wireless-Device-Battery-Monitor)
+>
+> <img src="docs/macos-screenshot.png" alt="BatteryHub in the macOS menu bar: headset 64%, mouse 12% (low), mouse 81% (asleep), keyboard 47% charging, controller 100% full" width="383">
 
 *Formerly **Wireless Battery**. Version 1.1.0 renamed the app; an update keeps your settings, startup choice and battery history.*
-
-[![Support me on Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20me-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/krisgfx)
-[![Donate with PayPal](https://img.shields.io/badge/PayPal-Donate-00457C?logo=paypal&logoColor=white)](https://www.paypal.com/paypalme/krisgfx)
-[![GitHub Sponsors](https://img.shields.io/badge/GitHub-Sponsor-EA4AAA?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/krisgfx9)
-[![Join our Discord](https://img.shields.io/badge/Discord-Join%20us-5865F2?logo=discord&logoColor=white)](https://discord.gg/ZgDDUPP8ye)
-[![Star on GitHub](https://img.shields.io/github/stars/krisgfx9/Wireless-Device-Battery-Monitor?style=flat&logo=github&label=Star)](https://github.com/krisgfx9/Wireless-Device-Battery-Monitor)
-[![Share on Reddit](https://img.shields.io/badge/Reddit-Share-FF4500?logo=reddit&logoColor=white)](https://www.reddit.com/submit?url=https%3A%2F%2Fgithub.com%2Fkrisgfx9%2FWireless-Device-Battery-Monitor&title=Wireless%20Battery%3A%20battery%20levels%20of%20your%20wireless%20devices%20on%20the%20Windows%20taskbar)
-[![Report a device](https://img.shields.io/badge/Report-a%20device-2EA44F?logo=github&logoColor=white)](https://github.com/krisgfx9/Wireless-Device-Battery-Monitor/issues/new)
-[![Help translate](https://img.shields.io/badge/Help-translate-6F42C1?logo=googletranslate&logoColor=white)](https://github.com/krisgfx9/Wireless-Device-Battery-Monitor/pull/129)
 
 Battery levels of your wireless mouse, headset, keyboard and controller, right on the Windows taskbar or in the [macOS menu bar](#macos-experimental). An experimental [Linux](#linux-experimental) build is available too.
 
@@ -437,9 +430,12 @@ protocols. Bluetooth/UPower fallbacks, HeadsetControl and the remaining vendors 
 A macOS build sits alongside the Windows and Linux apps. It shows the levels in the **menu bar**
 (`🎧 30%  🖱 93%`, drawn with SF Symbols, following light/dark mode) and uses the same vendor drivers
 through an IOKit HID backend. It needs macOS 11 or later and runs natively on Apple silicon and Intel Macs. All
-macOS-only files are in `mac/` and `src/mac/`, and `build-mac.sh` builds it.
+macOS-only files are in `mac/` and `src/mac/`, and `build-mac.sh` builds it. The app icon is the BatteryHub icon
+by [nik-txt](https://github.com/nik-txt) (`res/app.svg`), on a macOS-style tile.
 
 ### Download for Mac
+
+<img src="docs/macos-installer.png" alt="The BatteryHub installer: drag BatteryHub onto the Applications folder; first-launch steps below" width="480">
 
 1. Download **`BatteryHub-<version>-macos.dmg`** from the [latest release](https://github.com/zainudinnoori/Wireless-Device-Battery-Monitor/releases/latest).
 2. Open it and drag **BatteryHub** into **Applications**.
@@ -455,7 +451,8 @@ The only requirement is the Xcode Command Line Tools (`xcode-select --install`).
 ```sh
 ./build-mac.sh                # BatteryHub.app (menu-bar app) and ./batteryhub (command line)
 ./build-mac.sh universal      # the same as arm64 + x86_64 universal binaries
-./build-mac.sh dmg VERSION=1.2.3   # BatteryHub-1.2.3-macos.dmg, ready to share
+./build-mac.sh dmg VERSION=1.2.3   # BatteryHub-1.2.3-macos.dmg: drag-to-install window with the first-launch steps
+./build-mac.sh artwork        # regenerate the app icon and the disk-image background (after changing res/app.svg)
 ./build-mac.sh test           # shared JSON output test
 open BatteryHub.app           # start the menu-bar app (no Dock icon)
 ./batteryhub --list           # print detected levels and exit (also --json, --dump, --quit)
