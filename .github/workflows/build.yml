@@ -76,6 +76,11 @@ jobs:
         with:
           name: BatteryHub
           path: dist
+      # A copy without the version in its name, so .../releases/latest/download/BatteryHub-Setup.exe
+      # always downloads the newest installer (the README's "Download for Windows" button). The
+      # updater only looks for the versioned name, so it is unaffected.
+      - name: Add the fixed-name installer
+        run: cp dist/BatteryHub-Setup-*.exe dist/BatteryHub-Setup.exe
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: dist/*

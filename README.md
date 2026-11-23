@@ -5,6 +5,10 @@
 > The macOS port is maintained by [@zainnoori](https://github.com/zainnoori). The original Windows app is by
 > @krisgfx9 ([krisgfx.com](https://krisgfx.com/tools/)); please support both.
 >
+> [![Download for Mac](https://img.shields.io/badge/Download-for%20Mac-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/zainnoori/Wireless-Device-Battery-Monitor/releases/latest/download/BatteryHub-macos.dmg)
+> [![Download for Windows](https://img.shields.io/badge/Download-for%20Windows-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/zainnoori/Wireless-Device-Battery-Monitor/releases/latest/download/BatteryHub-Setup.exe)
+> <br><sub>Free and open source. Both builds come from GitHub Actions; all versions are on the <a href="https://github.com/zainnoori/Wireless-Device-Battery-Monitor/releases/latest">Releases page</a>.</sub>
+>
 > [![Support the macOS port on Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20the%20macOS%20port-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/zainnoori)
 > [![Star this fork](https://img.shields.io/github/stars/zainnoori/Wireless-Device-Battery-Monitor?style=flat&logo=github&label=Star%20the%20macOS%20fork)](https://github.com/zainnoori/Wireless-Device-Battery-Monitor)
 >
@@ -16,7 +20,7 @@ Battery levels of your wireless mouse, headset, keyboard and controller, right o
 
 ![BatteryHub on the taskbar](docs/screenshot.png)
 
-> **Just want it working?** Download **[BatteryHub-Setup](https://github.com/zainnoori/Wireless-Device-Battery-Monitor/releases/latest)** from the latest release. Use the per-user installation for setup without administrator rights; see the [installation notes](#install) for unsigned-app warnings and the all-users option.
+> **Just want it working?** Download **[BatteryHub-Setup.exe](https://github.com/zainnoori/Wireless-Device-Battery-Monitor/releases/latest/download/BatteryHub-Setup.exe)** from the latest release. Use the per-user installation for setup without administrator rights; see the [installation notes](#install) for unsigned-app warnings and the all-users option.
 >
 > **Experienced users** can grab the portable zip, use the [command-line options](#command-line), or [build it from source](#build) with `make` or `build.bat`.
 >

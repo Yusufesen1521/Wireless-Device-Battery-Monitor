@@ -116,6 +116,10 @@ jobs:
         with:
           name: BatteryHub-macos
           path: dist
+      # A copy without the version in its name, so .../releases/latest/download/BatteryHub-macos.dmg
+      # always downloads the newest disk image (the README's "Download for Mac" button).
+      - name: Add the fixed-name disk image
+        run: cp dist/BatteryHub-*-macos.dmg dist/BatteryHub-macos.dmg
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: dist/*
