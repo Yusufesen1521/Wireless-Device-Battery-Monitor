@@ -1,12 +1,22 @@
 // Exercise the Glorious Model I 2 Wireless driver with a simulated HID transport; no USB writes or hardware needed.
+// Build:
+// g++ -std=c++17 -O2 -Wall -Wextra tests/glorious_model_i2_driver_test.cpp -o build/glorious_model_i2_driver_test.exe -lhid -lsetupapi
 #include "../src/drivers/drivers.h"
 
 #include <cassert>
 #include <cstdio>
 #include <map>
 
+static ULONGLONG fakeNow = 10000000;
+ULONGLONG FakeTickCount64() { return fakeNow; }
+
+#define GetTickCount64 FakeTickCount64
+#include "../src/drivers/glorious_model_i2.cpp"
+#undef GetTickCount64
+
 namespace {
 std::map<std::wstring, std::vector<std::vector<BYTE>>> reports;
+std::map<std::wstring, int> failOpens;
 int opens = 0;
 
 HidColl Collection(USHORT pid, const wchar_t* path, USHORT page = 0xFF00, USHORT usage = 0xFF00) {
@@ -21,8 +31,14 @@ HidColl Collection(USHORT pid, const wchar_t* path, USHORT page = 0xFF00, USHORT
 }
 }  // namespace
 
-// Stand-ins for the Win32 HID transport. The production driver is linked unchanged.
+// Stand-ins for the Win32 HID transport. The production driver is included unchanged.
 bool HidDev::OpenReadOnly(const HidColl& c) {
+    auto it = failOpens.find(c.path);
+    if (it != failOpens.end() && it->second > 0) {
+        --it->second;
+        h_ = INVALID_HANDLE_VALUE;
+        return false;
+    }
     c_ = c;
     h_ = reinterpret_cast<HANDLE>(1);
     ++opens;
@@ -138,6 +154,81 @@ int main() {
     assert(ctx.out[0].percent == 99 && !ctx.out[0].charging && ctx.out[0].note.empty());
     assert(ctx.out[0].graceSec == 1800);
     assert(ctx.IsClaimed(0x093A, 0x821A) && ctx.IsClaimed(0x093A, 0x821D));
+
+    // i. Receiver with a reading (99%), then +100 s with empty queue -> no reopen, still 99%, not asleep.
+    opens = 0;
+    ctx = {};
+    ctx.colls = { receiver };
+    reports = { { L"receiver", { { 0x06, 0xFB, 0x63, 0x00 } } } };
+    PollGloriousModelI2(ctx);
+    assert(opens == 1);
+    assert(ctx.out.size() == 1 && ctx.out[0].percent == 99 && !ctx.out[0].asleep);
+
+    fakeNow += 100000;
+    ctx = {};
+    ctx.colls = { receiver };
+    reports.clear();
+    PollGloriousModelI2(ctx);
+    assert(opens == 1);
+    assert(ctx.out.size() == 1);
+    assert(ctx.out[0].percent == 99 && !ctx.out[0].charging && !ctx.out[0].asleep);
+
+    // j. +60 s more (160 s silent), empty queue -> one reopen, still 99%, not asleep; immediate re-poll -> no reopen.
+    fakeNow += 60000;
+    ctx = {};
+    ctx.colls = { receiver };
+    reports.clear();
+    PollGloriousModelI2(ctx);
+    assert(opens == 2);
+    assert(ctx.out.size() == 1);
+    assert(ctx.out[0].percent == 99 && !ctx.out[0].charging && !ctx.out[0].asleep);
+
+    ctx = {};
+    ctx.colls = { receiver };
+    reports.clear();
+    PollGloriousModelI2(ctx);
+    assert(opens == 2);
+    assert(ctx.out.size() == 1);
+    assert(ctx.out[0].percent == 99 && !ctx.out[0].charging && !ctx.out[0].asleep);
+
+    // k. After the reopen, queue 06 FB 61 00 on the same path -> 97%, not asleep, no reopen.
+    ctx = {};
+    ctx.colls = { receiver };
+    reports = { { L"receiver", { { 0x06, 0xFB, 0x61, 0x00 } } } };
+    PollGloriousModelI2(ctx);
+    assert(opens == 2);
+    assert(ctx.out.size() == 1);
+    assert(ctx.out[0].percent == 97 && !ctx.out[0].charging && !ctx.out[0].asleep);
+
+    // l. +210 s with no reports -> listed asleep with remembered percent (reopen does not hide it).
+    fakeNow += 210000;
+    ctx = {};
+    ctx.colls = { receiver };
+    reports.clear();
+    PollGloriousModelI2(ctx);
+    assert(opens == 3);
+    assert(ctx.out.size() == 1);
+    assert(ctx.out[0].percent == 97 && !ctx.out[0].charging && ctx.out[0].asleep);
+
+    // m. Reopen fails once -> remembered reading kept in output, and the following poll opens again.
+    fakeNow += 160000;
+    failOpens[L"receiver"] = 1;
+    ctx = {};
+    ctx.colls = { receiver };
+    reports.clear();
+    PollGloriousModelI2(ctx);
+    assert(failOpens[L"receiver"] == 0);
+    assert(opens == 3);
+    assert(ctx.out.size() == 1);
+    assert(ctx.out[0].percent == 97 && !ctx.out[0].charging && ctx.out[0].asleep);
+
+    ctx = {};
+    ctx.colls = { receiver };
+    reports = { { L"receiver", { { 0x06, 0xFB, 0x60, 0x00 } } } };
+    PollGloriousModelI2(ctx);
+    assert(opens == 4);
+    assert(ctx.out.size() == 1);
+    assert(ctx.out[0].percent == 96 && !ctx.out[0].charging && !ctx.out[0].asleep);
 
     std::puts("Glorious Model I 2 Wireless driver tests passed.");
 }

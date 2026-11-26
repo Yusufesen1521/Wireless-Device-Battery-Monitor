@@ -14,6 +14,7 @@
 //  * Owner's test on the USB cable (093A:821A): no status report arrived (~7 min across every
 //    openable collection, plus 15 s after replugging), so the cable is listed with an unknown
 //    level; CORE's "charging" on the cable comes from the USB connection itself, not the mouse.
+//  * Owner saw a long-lived receiver handle go silent after hours while a new one got reports; reopen after ~150 s.
 #include "drivers.h"
 
 #include <algorithm>
@@ -26,6 +27,7 @@ namespace {
 constexpr USHORT kVid = 0x093A;
 constexpr USHORT kPidCable = 0x821A;
 constexpr USHORT kPidReceiver = 0x821D;
+constexpr ULONGLONG kReopenAfterMs = 150000;  // two missed ~65 s pushes
 constexpr ULONGLONG kAsleepAfterMs = 200000;  // three missed ~65 s pushes
 
 struct Slot {
@@ -34,6 +36,7 @@ struct Slot {
     BYTE percent = 0;
     bool charging = false;
     ULONGLONG at = 0;
+    ULONGLONG heard = 0;
 };
 
 }  // namespace
@@ -54,18 +57,33 @@ void PollGloriousModelI2(PollContext& ctx) {
             if (!slot.dev) {
                 slot.dev = std::make_unique<HidDev>();
                 if (!slot.dev->OpenReadOnly(*c)) {
-                    g_modelI2.erase(c->path);
-                    continue;
+                    slot.dev.reset();
+                    if (!slot.have) {
+                        g_modelI2.erase(c->path);
+                        continue;
+                    }
+                } else {
+                    slot.heard = GetTickCount64();
+                }
+            } else if (GetTickCount64() - slot.heard > kReopenAfterMs) {
+                slot.dev->Close();
+                if (slot.dev->OpenReadOnly(*c)) {
+                    slot.heard = GetTickCount64();
+                } else {
+                    slot.dev.reset();
                 }
             }
-            for (int i = 0; i < 64; i++) {
-                std::vector<BYTE> r;
-                if (slot.dev->Read(r, 30) < 0) break;
-                if (r.size() >= 4 && r[0] == 0x06 && r[1] == 0xFB && r[2] <= 100) {
-                    slot.have = true;
-                    slot.percent = r[2];
-                    slot.charging = r[3] != 0;
-                    slot.at = GetTickCount64();
+            if (slot.dev) {
+                for (int i = 0; i < 64; i++) {
+                    std::vector<BYTE> r;
+                    if (slot.dev->Read(r, 30) < 0) break;
+                    if (r.size() >= 4 && r[0] == 0x06 && r[1] == 0xFB && r[2] <= 100) {
+                        slot.have = true;
+                        slot.percent = r[2];
+                        slot.charging = r[3] != 0;
+                        slot.at = GetTickCount64();
+                        slot.heard = slot.at;
+                    }
                 }
             }
             if (!slot.have && pid != kPidCable) {
