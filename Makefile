@@ -90,6 +90,8 @@ test: test-update-core test-update-win test-update-signature
 	./build/sony_inzone_protocol_test.exe
 	$(CXX) $(CXXFLAGS) tests/rapoo_driver_test.cpp src/drivers/rapoo.cpp -o build/rapoo_driver_test.exe
 	./build/rapoo_driver_test.exe
+	$(CXX) $(CXXFLAGS) tests/glorious_model_i2_driver_test.cpp src/drivers/glorious_model_i2.cpp -o build/glorious_model_i2_driver_test.exe
+	./build/glorious_model_i2_driver_test.exe
 	$(CXX) -std=c++17 -O2 -Wall tests/rawm_protocol_test.cpp -o build/rawm_protocol_test.exe
 	./build/rawm_protocol_test.exe
 	$(CXX) $(CXXFLAGS) tests/rawm_driver_test.cpp src/drivers/rawm.cpp -o build/rawm_driver_test.exe
